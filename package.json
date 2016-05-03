@@ -1,0 +1,16 @@
+{
+  "name": "dispatch-router",
+  "version": "0.0.1",
+  "description": "a minimal redux connected router for single page applications",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "author": "axdg <axdgd@dfant.asia>",
+  "license": "MIT",
+  "devDependencies": {
+    "expect": "^1.19.0",
+    "redux": "^3.5.2",
+    "standard": "^7.0.0"
+  }
+}

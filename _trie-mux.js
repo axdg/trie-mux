@@ -1,12 +1,12 @@
-const parseSegments = (path) => {
-  const ret = path.split('/');
+function parseSegments(path) {
+  var ret = path.split('/');
 
-  // strip starting slash
+  // Strip starting slash
   if (ret[0] === '') {
     ret.shift();
   }
 
-  // strip trailing slash
+  // Strip trailing slash
   if (ret[ret.length - 1] === '') {
     ret.pop();
   }
@@ -17,9 +17,9 @@ const parseSegments = (path) => {
   }
 
   return ret;
-};
+}
 
-const createChildNode = (segments, node) => {
+function createChildNode(segments, node) {
   var segment = segments.shift();
   var nextNode = null;
 
@@ -54,11 +54,11 @@ const createChildNode = (segments, node) => {
 
   // Create more children.
   return createChildNode(segments, nextNode)
-};
+}
 
-const findNode = (segments, node, params) => {
+function findNode(segments, node, params) {
   if (segments.length) {
-    const segment = segments.shift();
+    var segment = segments.shift();
 
     // Static node
     if (node.static[segment]) {
@@ -78,18 +78,18 @@ const findNode = (segments, node, params) => {
   }
 
   return;
-};
+}
 
 // TODO: endpoint needs to be replaced with an object or callback.
-const createNode = (root) => {
-  const _this = {
+function createNode () {
+  var _this = {
     static: {},
     name: '',
     param: null,
-    endpoint: false,
+    endpoint: false
   };
 
-  _this.createRoute = (path) => {
+  _this.createRoute = function(path) {
     if (!path || typeof path !== 'string') {
       throw new Error('createRoute expects a non-empty string.');
     }
@@ -98,7 +98,7 @@ const createNode = (root) => {
     return createChildNode(parseSegments(path), _this);
   }
 
-  _this.matchRoute = (path) => {
+  _this.matchRoute = function(path) {
     if (!path || typeof path !== 'string') {
       throw new Error('matchRoute expects a non-empty string.');
     }
@@ -108,8 +108,8 @@ const createNode = (root) => {
   }
 
   return _this;
-};
+}
 
-const trie = createNode();
+var trie = createNode();
 trie.createRoute('/some/:thing/or/:other');
 console.log(JSON.stringify(trie, null, 2));

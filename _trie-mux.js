@@ -48,7 +48,7 @@ const createChildNode = (segments, node) => {
 
   // No more segments, return the newly created child.
   if (!segments.length) {
-    nextNode.leaf = true;
+    nextNode.endpoint = true;
     return nextNode;
   }
 
@@ -56,23 +56,56 @@ const createChildNode = (segments, node) => {
   return createChildNode(segments, nextNode)
 };
 
-const createNode = () => {
+const findNode = (segments, node, params) => {
+  if (segments.length) {
+    const segment = segments.shift();
+
+    // Static node
+    if (node.static[segment]) {
+      return findNode(segments, node.static[segment]);
+    }
+
+    if (node.param) {
+      params.push(segment);
+      return findNode(segments, node.param, params);
+    }
+
+    return;
+  }
+
+  if (node.endpoint) {
+    return params;
+  }
+
+  return;
+};
+
+// TODO: endpoint needs to be replaced with an object or callback.
+const createNode = (root) => {
   const _this = {
     static: {},
     name: '',
     param: null,
-    leaf: false,
+    endpoint: false,
   };
 
   _this.createRoute = (path) => {
     if (!path || typeof path !== 'string') {
-      throw new Error('createRoute exects a non-empty string.');
+      throw new Error('createRoute expects a non-empty string.');
     }
 
+    // TODO: Change the order of the arguments, pass in the node first.
     return createChildNode(parseSegments(path), _this);
   }
 
-  _this.matchRoute = () => {}
+  _this.matchRoute = (path) => {
+    if (!path || typeof path !== 'string') {
+      throw new Error('matchRoute expects a non-empty string.');
+    }
+
+    // TODO: Change the order of the arguments, pass in the node first.
+    return findNode(parseSegments(path), _this, {});
+  }
 
   return _this;
 };

@@ -3,7 +3,7 @@ function parseSegments(path) {
     return [];
   }
 
-  const segments = path.split('/');
+  var segments = path.split('/');
 
   // Strip initial slash.
   if (segments[0] === '') {
@@ -45,7 +45,7 @@ function createChildNode(node, segments, callback) {
 
     // Create a static node.
     if (!node.static[segment]) {
-      nextNode =  node.static[segment] = createNode();
+      nextNode = node.static[segment] = createNode();
     } else {
       nextNode = node.static[segment];
     }
@@ -92,10 +92,10 @@ function createNode() {
     name: '',
     static: {},
     param: null,
-    callback: null,
+    callback: null
   };
 
-  _this.createRoute = function(path, callback) {
+  _this.createRoute = function (path, callback) {
     if (!path || typeof path !== 'string') {
       throw new Error('createRoute requires a non-empty path string');
     }
@@ -104,7 +104,7 @@ function createNode() {
       throw new Error('createRoute expects a function as the second argument');
     }
 
-    const segments = parseSegments(path);
+    var segments = parseSegments(path);
 
     // There are still empty segments.
     if (segments.indexOf('') !== -1) {
@@ -112,15 +112,15 @@ function createNode() {
     }
 
     return createChildNode(_this, segments, callback);
-  }
+  };
 
-  _this.matchRoute = function(path) {
+  _this.matchRoute = function (path) {
     if (!path || typeof path !== 'string') {
       throw new Error('matchRoute expects a non-empty path string.');
     }
 
     return findNode(_this, parseSegments(path), {});
-  }
+  };
 
   return _this;
 }
@@ -128,9 +128,7 @@ function createNode() {
 // TODO: Implement this.
 function stringify() {}
 
-mux = {
+module.exports = {
   createNode: createNode,
-  stringify: stringify,
+  stringify: stringify
 };
-
-module.exports = mux;

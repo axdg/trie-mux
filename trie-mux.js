@@ -1,115 +1,136 @@
-const mutate = require('xtend/mutable')
-const assert = require('assert')
-const xtend = require('xtend')
+function parseSegments(path) {
+  if (path === '/') {
+    return [];
+  }
 
-module.exports = Trie
+  const segments = path.split('/');
 
-// create a new trie
-// null -> obj
-function Trie () {
-  if (!(this instanceof Trie)) return new Trie()
-  this.trie = { nodes: {} }
+  // Strip initial slash.
+  if (segments[0] === '') {
+    segments.shift();
+  }
+
+  // Strip trailing slash.
+  if (segments[segments.length - 1] === '') {
+    segments.pop();
+  }
+
+  return segments;
 }
 
-// create a node on the trie at route
-// and return a node
-// str -> null
-Trie.prototype.create = function (route) {
-  assert.equal(typeof route, 'string', 'route should be a string')
-  // strip leading '/' and split routes
-  const routes = route.replace(/^\//, '').split('/')
-  return (function createNode (index, trie, routes) {
-    const route = routes[index]
+function createChildNode(node, segments, callback) {
+  if (segments.length) {
+    var segment = segments.shift();
+    var nextNode = null;
 
-    if (route === undefined) return trie
-
-    var node = null
-    if (/^:/.test(route)) {
-      // if node is a name match, set name and append to ':' node
-      if (!trie.nodes['$$']) {
-        node = { nodes: {} }
-        trie.nodes['$$'] = node
-      } else {
-        node = trie.nodes['$$']
+    // Create a parameter node..
+    if (segments[0] === ':') {
+      segment = segment.substring(1);
+      if (!node.param) {
+        nextNode = node.param = createNode();
+        nextNode.name = segment;
       }
-      trie.name = route.replace(/^:/, '')
-    } else if (!trie.nodes[route]) {
-      node = { nodes: {} }
-      trie.nodes[route] = node
-    } else {
-      node = trie.nodes[route]
+
+      if (node.param.name !== segment) {
+        throw new Error(
+          'Attempt to overwrite parameter `' +
+          node.param.name + '` with `' + segment + '`.'
+        );
+      } else {
+        nextNode = node.param;
+      }
+
+      return createChildNode(nextNode, segments, callback);
     }
 
-    // we must recurse deeper
-    return createNode(index + 1, node, routes)
-  })(0, this.trie, routes)
-}
-
-// match a route on the trie
-// and return the node
-// str -> obj
-Trie.prototype.match = function (route) {
-  assert.equal(typeof route, 'string', 'route should be a string')
-
-  const routes = route.replace(/^\//, '').split('/')
-  const params = {}
-
-  var node = (function search (index, trie) {
-    // either there's no match, or we're done searching
-    if (trie === undefined) return undefined
-    const route = routes[index]
-    if (route === undefined) return trie
-
-    if (trie.nodes[route]) {
-      // match regular routes first
-      return search(index + 1, trie.nodes[route])
-    } else if (trie.name) {
-      // match named routes
-      params[trie.name] = route
-      return search(index + 1, trie.nodes['$$'])
+    // Create a static node.
+    if (!node.static[segment]) {
+      nextNode =  node.static[segment] = createNode();
     } else {
-      // no matches found
-      return search(index + 1)
+      nextNode = node.static[segment];
     }
-  })(0, this.trie)
 
-  if (!node) return undefined
-  node = xtend(node)
-  node.params = params
-  return node
-}
-
-// mount a trie onto a node at route
-// (str, obj) -> null
-Trie.prototype.mount = function (route, trie) {
-  assert.equal(typeof route, 'string', 'route should be a string')
-  assert.equal(typeof trie, 'object', 'trie should be a object')
-
-  const split = route.replace(/^\//, '').split('/')
-  var node = null
-  var key = null
-
-  if (split.length === 1) {
-    key = split[0]
-    node = this.create(key)
-  } else {
-    const headArr = split.splice(0, split.length - 1)
-    const head = headArr.join('/')
-    key = split[0]
-    node = this.create(head)
+    return createChildNode(nextNode, segments, callback);
   }
 
-  mutate(node.nodes, trie.nodes)
-  if (trie.name) node.name = trie.name
-
-  // delegate properties from '/' to the new node
-  // '/' cannot be reached once mounted
-  if (node.nodes['']) {
-    Object.keys(node.nodes['']).forEach(function (key) {
-      if (key === 'nodes') return
-      node[key] = node.nodes[''][key]
-    })
-    mutate(node.nodes, node.nodes[''].nodes)
-    delete node.nodes[''].nodes
+  // No more segments, attach the callback.
+  if (node.callback) {
+    throw new Error('Attempt to overwrite existing callback');
   }
+
+  node.callback = callback;
+  return node;
 }
+
+function findNode(node, segments, params) {
+  if (segments.length) {
+    var segment = segments.shift();
+
+    // Static node
+    if (node.static[segment]) {
+      return findNode(node.static[segment], segments, params);
+    }
+
+    if (node.param) {
+      params.push(segment);
+      return findNode(node.param, segments, params);
+    }
+
+    return null;
+  }
+
+  if (node.callback) {
+    return node.callback.bind(null, params);
+  }
+
+  return null;
+}
+
+// TODO: create this with
+function createNode() {
+  var _this = {
+    name: '',
+    static: {},
+    param: null,
+    callback: null,
+  };
+
+  _this.createRoute = function(path, callback) {
+    if (!path || typeof path !== 'string') {
+      throw new Error('createRoute requires a non-empty path string');
+    }
+
+    if (!callback || typeof callback !== 'function') {
+      throw new Error('createRoute expects a function as the second argument');
+    }
+
+    const segments = parseSegments(path);
+
+    // There are still empty segments.
+    if (segments.indexOf('') !== -1) {
+      throw new Error('Supplied path contains double slashes.');
+    }
+
+    return createChildNode(_this, segments, callback);
+  }
+
+  _this.matchRoute = function(path) {
+    if (!path || typeof path !== 'string') {
+      throw new Error('matchRoute expects a non-empty path string.');
+    }
+
+    return findNode(_this, parseSegments(path), {});
+  }
+
+  return _this;
+}
+
+// TODO: Implement this.
+function stringify() {}
+
+mux = {
+  createNode: createNode,
+  stringify: stringify,
+};
+
+module.exports = mux;

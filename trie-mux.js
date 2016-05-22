@@ -24,8 +24,13 @@ function createChildNode(node, segments, callback) {
     var nextNode = null;
 
     // Create a parameter node..
-    if (segments[0] === ':') {
+    if (segment[0] === ':') {
       segment = segment.substring(1);
+
+      if (!segment) {
+        throw new Error('Parameters must be named');
+      }
+
       if (!node.param) {
         nextNode = node.param = createNode();
         nextNode.name = segment;
@@ -34,7 +39,7 @@ function createChildNode(node, segments, callback) {
       if (node.param.name !== segment) {
         throw new Error(
           'Attempt to overwrite parameter `' +
-          node.param.name + '` with `' + segment + '`.'
+          node.param.name + '` with `' + segment + '`'
         );
       } else {
         nextNode = node.param;
@@ -55,7 +60,7 @@ function createChildNode(node, segments, callback) {
 
   // No more segments, attach the callback.
   if (node.callback) {
-    throw new Error('Attempt to overwrite existing callback');
+    throw new Error('Attempt to overwrite existing route');
   }
 
   node.callback = callback;
@@ -66,13 +71,14 @@ function findNode(node, segments, params) {
   if (segments.length) {
     var segment = segments.shift();
 
-    // Static node
+    // Static node.
     if (node.static[segment]) {
       return findNode(node.static[segment], segments, params);
     }
 
+    // Param node.
     if (node.param) {
-      params.push(segment);
+      params[node.param.name] = segment;
       return findNode(node.param, segments, params);
     }
 
@@ -80,13 +86,16 @@ function findNode(node, segments, params) {
   }
 
   if (node.callback) {
-    return node.callback.bind(null, params);
+    return {
+      callback: node.callback,
+      params: params,
+    };
   }
 
   return null;
 }
 
-// TODO: create this with
+// TODO: switch to prototype methods.
 function createNode() {
   var _this = {
     name: '',
@@ -101,14 +110,14 @@ function createNode() {
     }
 
     if (!callback || typeof callback !== 'function') {
-      throw new Error('createRoute expects a function as the second argument');
+      throw new Error('createRoute expects a function or object as the second argument');
     }
 
     var segments = parseSegments(path);
 
     // There are still empty segments.
     if (segments.indexOf('') !== -1) {
-      throw new Error('Supplied path contains double slashes.');
+      throw new Error('Supplied path contains double slashes');
     }
 
     return createChildNode(_this, segments, callback);
@@ -116,7 +125,7 @@ function createNode() {
 
   _this.matchRoute = function (path) {
     if (!path || typeof path !== 'string') {
-      throw new Error('matchRoute expects a non-empty path string.');
+      throw new Error('matchRoute expects a non-empty path string');
     }
 
     return findNode(_this, parseSegments(path), {});

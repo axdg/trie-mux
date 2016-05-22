@@ -1,6 +1,15 @@
 var expect = require('expect');
 var mux = require('./trie-mux.js');
-var noop = function () {};
+
+// Noop to fake out callbacks.
+function noop(x) { return x };
+
+// Log util to assert the correct callbacks are present.
+function log (str) {
+  return function () {
+    return str;
+  }
+}
 
 describe('mux', function () {
   describe('createNode()', function () {
@@ -33,8 +42,14 @@ describe('mux', function () {
       });
 
       it('should throw on invalid routes', function () {
-        expect(function () { mux.createNode().createRoute('/double//slashes', noop); })
-          .toThrow(/double slashes/);
+        expect(function () { mux.createNode().createRoute([], noop) })
+          .toThrow('string');
+        expect(function () { mux.createNode().createRoute('', noop) })
+          .toThrow('non-empty');
+        expect(function () { mux.createNode().createRoute('double//slashes', noop); })
+          .toThrow('double slashes');
+        expect(function () { mux.createNode().createRoute(':', noop) })
+          .toThrow('must be named')
       });
 
       it('should throw if callback is missing or not a function', function () {
@@ -43,10 +58,128 @@ describe('mux', function () {
         expect(function () { mux.createNode().createRoute('/', {}); })
           .toThrow(/second argument/);
       });
+
+      // NOTE: The trie created here is just designed to cover all cases and
+      // combinations of static and parameter routes.
+      it('should create create static and parametric routes', function () {
+        var trie = mux.createNode()
+        var root = trie.createRoute('/', log('/'));
+
+        // Asserts that trie and root point to the same object
+        expect(trie).toBe(root);
+        expect(trie.callback()).toBe('/');
+
+        var a = trie.createRoute('/a', log('a'));
+        expect(trie.static.a.callback).toBeA('function');
+        expect(trie.static.a.callback()).toBe('a');
+
+        var b = a.createRoute('/:b', log('b'));
+        expect(trie.static.a.param.callback).toBeA('function');
+        expect(trie.static.a.param.callback()).toBe('b');
+        expect(trie.static.a.param.name).toBe('b');
+
+        var c = b.createRoute('/c', log('c'));
+        expect(trie.static.a.param.static.c.callback).toBeA('function');
+        expect(trie.static.a.param.static.c.callback()).toBe('c');
+
+        var d = b.createRoute('/:d', log('d'));
+        expect(trie.static.a.param.param.callback).toBeA('function');
+        expect(trie.static.a.param.param.callback()).toBe('d');
+        expect(trie.static.a.param.param.name).toBe('d');
+
+        // Since e is not an endpoint, there is not callback;
+        var f = trie.createRoute('a/:b/:d/e/f', log('f'));
+        expect(trie.static.a.param.param.static.e.callback).toNotExist();
+        expect(trie.static.a.param.param.static.e.static.f.callback).toBeA('function');
+        expect(trie.static.a.param.param.static.e.static.f.callback()).toBe('f');
+      });
+
+      it('should throw if an attempt to re-assign a callback is made', function () {
+        var trie = mux.createNode();
+
+        trie.createRoute('static', noop);
+        expect(function () { trie.createRoute('static', noop) })
+          .toThrow('existing route');
+
+        trie.createRoute(':param', noop);
+        expect(function () { trie.createRoute(':param', noop) })
+          .toThrow('overwrite');
+      });
+
+      it('should throw if an attempt to rename a param is made', function () {
+        var trie = mux.createNode();
+        trie.createRoute(':this', noop);
+        expect(function () { trie.createRoute(':that', noop) })
+          .toThrow('Attempt to overwrite parameter `this` with `that`');
+      });
     });
 
-    describe('matchRoute', function () {
+    describe('matchRoute()', function () {
+      var trie = mux.createNode();
+      var root = trie.createRoute('/', log('root'));
 
+      // 'u' and 'p' segments are not endpoints.
+      root.createRoute('u/:id', log('user'));
+      root.createRoute('u/:id/settings', log('settings'));
+      root.createRoute('p/:post', log('post'));
+
+      // Callback is an example of param validation.
+      root.createRoute('p/:post/:action', function (params) {
+        if (['edit', 'publish'].indexOf(params.action) === -1) {
+          return 'invalid';
+        }
+        return 'valid';
+      });
+
+      it('should throw when provided an empty or non-string route', function () {
+        expect(function() { mux.createNode().matchRoute('') })
+          .toThrow('non-empty');
+        expect(function() { mux.createNode().matchRoute([]) })
+          .toThrow('string');
+      });
+
+      it('should return an object containing params an callback on match', function () {
+        var root = trie.matchRoute('/');
+        expect(Object.keys(root.params).length).toBe(0);
+        expect(root.callback()).toBe('root');
+
+        var user = trie.matchRoute('/u/axdg');
+        expect(Object.keys(user.params).length).toBe(1);
+        expect(user.params.id).toBe('axdg');
+        expect(user.callback()).toBe('user');
+
+        // Works with a trailing slash.
+        var tralingSlash = trie.matchRoute('/u/axdg/');
+        expect(tralingSlash.callback()).toBe('user');
+
+        var settings = trie.matchRoute('/u/axdg/settings');
+        expect(Object.keys(user.params).length).toBe(1);
+        expect(settings.params.id).toBe('axdg');
+        expect(settings.callback()).toBe('settings');
+
+        var post = trie.matchRoute('/p/trie-mux');
+        expect(Object.keys(user.params).length).toBe(1);
+        expect(post.params.post).toBe('trie-mux');
+        expect(post.callback()).toBe('post');
+
+        var actions = trie.matchRoute('/p/trie-mux/publish');
+        expect(Object.keys(actions.params).length).toBe(2);
+        expect(actions.params.post).toBe('trie-mux');
+        expect(actions.params.action).toBe('publish');
+        expect(actions.callback(actions.params)).toBe('valid');
+
+      });
+      it('should return `null` when there is no match', function () {
+        // Nodes but not endpoints.
+        expect(trie.matchRoute('/u')).toBe(null);
+        expect(trie.matchRoute('/u')).toBe(null);
+
+        // Not nodes.
+        expect(trie.matchRoute('/u/axdg/set')).toBe(null);
+        expect(trie.matchRoute('/nonode')).toBe(null);
+        expect(trie.matchRoute('/u/axdg/settings/nonode')).toBe(null);
+        expect(trie.matchRoute('/u/axdg/settings//')).toBe(null);
+      });
     });
   });
 });

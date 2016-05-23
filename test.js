@@ -1,5 +1,5 @@
-var expect = require('expect');
 var mux = require('./trie-mux.js');
+var expect = require('expect');
 
 // Noop to fake out callbacks.
 function noop() {}
@@ -179,5 +179,24 @@ describe('mux', function () {
         expect(trie.matchRoute('/u/axdg/settings//')).toBe(null);
       });
     });
+  });
+});
+
+// jsdom is used to mock history.
+var jsdom = require('jsdom').jsdom;
+var redux = require('redux').default;
+
+describe('createRouter()', function () {
+  it('should return a router');
+  it('should optionally register a click listener');
+  it('that call dispatch in response to click events');
+  it('should listen to popstate events');
+  it('should call dispatch when a popstate event fires');
+});
+
+describe('router', function () {
+  describe('navigate()', function () {
+    it('should allow for programmatic navigation [pushState, replaceState]');
+    it('should call dispatch when navigate is called');
   });
 });

@@ -2,26 +2,25 @@ var expect = require('expect');
 var mux = require('./trie-mux.js');
 
 // Noop to fake out callbacks.
-function noop(x) { return x };
+function noop() {}
 
 // Log util to assert the correct callbacks are present.
-function log (str) {
+function log(str) {
   return function () {
     return str;
-  }
+  };
 }
 
 describe('mux', function () {
   describe('createNode()', function () {
     it('should create a node', function () {
       var trie = mux.createNode();
-      expect(trie).toContainKeys(['name',
-        'static',
-        'param',
-        'callback',
-        'createRoute',
-        'matchRoute'
-      ]);
+      expect(trie.name).toEqual('');
+      expect(trie.static).toEqual({});
+      expect(trie.param).toEqual(null);
+      expect(trie.callback).toBe(null);
+      expect(trie.createRoute).toBeA('function');
+      expect(trie.matchRoute).toBeA('function');
     });
   });
 
@@ -32,24 +31,23 @@ describe('mux', function () {
           .createRoute('/static', noop)
           .createRoute('/:param', noop);
 
-        expect(leaf).toContainKeys(['name',
-          'static',
-          'param',
-          'callback',
-          'createRoute',
-          'matchRoute'
-        ]);
+        expect(leaf.name).toEqual('param');
+        expect(leaf.static).toEqual({});
+        expect(leaf.param).toEqual(null);
+        expect(leaf.callback).toBeA('function');
+        expect(leaf.createRoute).toBeA('function');
+        expect(leaf.matchRoute).toBeA('function');
       });
 
       it('should throw on invalid routes', function () {
-        expect(function () { mux.createNode().createRoute([], noop) })
+        expect(function () { mux.createNode().createRoute([], noop); })
           .toThrow('string');
-        expect(function () { mux.createNode().createRoute('', noop) })
+        expect(function () { mux.createNode().createRoute('', noop); })
           .toThrow('non-empty');
         expect(function () { mux.createNode().createRoute('double//slashes', noop); })
           .toThrow('double slashes');
-        expect(function () { mux.createNode().createRoute(':', noop) })
-          .toThrow('must be named')
+        expect(function () { mux.createNode().createRoute(':', noop); })
+          .toThrow('must be named');
       });
 
       it('should throw if callback is missing or not a function', function () {
@@ -62,7 +60,7 @@ describe('mux', function () {
       // NOTE: The trie created here is just designed to cover all cases and
       // combinations of static and parameter routes.
       it('should create create static and parametric routes', function () {
-        var trie = mux.createNode()
+        var trie = mux.createNode();
         var root = trie.createRoute('/', log('/'));
 
         // Asserts that trie and root point to the same object
@@ -78,17 +76,17 @@ describe('mux', function () {
         expect(trie.static.a.param.callback()).toBe('b');
         expect(trie.static.a.param.name).toBe('b');
 
-        var c = b.createRoute('/c', log('c'));
+        b.createRoute('/c', log('c'));
         expect(trie.static.a.param.static.c.callback).toBeA('function');
         expect(trie.static.a.param.static.c.callback()).toBe('c');
 
-        var d = b.createRoute('/:d', log('d'));
+        b.createRoute('/:d', log('d'));
         expect(trie.static.a.param.param.callback).toBeA('function');
         expect(trie.static.a.param.param.callback()).toBe('d');
         expect(trie.static.a.param.param.name).toBe('d');
 
         // Since e is not an endpoint, there is not callback;
-        var f = trie.createRoute('a/:b/:d/e/f', log('f'));
+        trie.createRoute('a/:b/:d/e/f', log('f'));
         expect(trie.static.a.param.param.static.e.callback).toNotExist();
         expect(trie.static.a.param.param.static.e.static.f.callback).toBeA('function');
         expect(trie.static.a.param.param.static.e.static.f.callback()).toBe('f');
@@ -98,18 +96,18 @@ describe('mux', function () {
         var trie = mux.createNode();
 
         trie.createRoute('static', noop);
-        expect(function () { trie.createRoute('static', noop) })
+        expect(function () { trie.createRoute('static', noop); })
           .toThrow('existing route');
 
         trie.createRoute(':param', noop);
-        expect(function () { trie.createRoute(':param', noop) })
+        expect(function () { trie.createRoute(':param', noop); })
           .toThrow('overwrite');
       });
 
       it('should throw if an attempt to rename a param is made', function () {
         var trie = mux.createNode();
         trie.createRoute(':this', noop);
-        expect(function () { trie.createRoute(':that', noop) })
+        expect(function () { trie.createRoute(':that', noop); })
           .toThrow('Attempt to overwrite parameter `this` with `that`');
       });
     });
@@ -132,16 +130,16 @@ describe('mux', function () {
       });
 
       it('should throw when provided an empty or non-string route', function () {
-        expect(function() { mux.createNode().matchRoute('') })
+        expect(function () { mux.createNode().matchRoute(''); })
           .toThrow('non-empty');
-        expect(function() { mux.createNode().matchRoute([]) })
+        expect(function () { mux.createNode().matchRoute([]); })
           .toThrow('string');
       });
 
       it('should return an object containing params an callback on match', function () {
-        var root = trie.matchRoute('/');
-        expect(Object.keys(root.params).length).toBe(0);
-        expect(root.callback()).toBe('root');
+        var _root = trie.matchRoute('/');
+        expect(Object.keys(_root.params).length).toBe(0);
+        expect(_root.callback()).toBe('root');
 
         var user = trie.matchRoute('/u/axdg');
         expect(Object.keys(user.params).length).toBe(1);
@@ -167,8 +165,8 @@ describe('mux', function () {
         expect(actions.params.post).toBe('trie-mux');
         expect(actions.params.action).toBe('publish');
         expect(actions.callback(actions.params)).toBe('valid');
-
       });
+
       it('should return `null` when there is no match', function () {
         // Nodes but not endpoints.
         expect(trie.matchRoute('/u')).toBe(null);

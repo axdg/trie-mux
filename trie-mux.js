@@ -1,9 +1,10 @@
 function parseSegments(path) {
+  var segments;
   if (path === '/') {
     return [];
   }
 
-  var segments = path.split('/');
+  segments = path.split('/');
 
   // Strip initial slash.
   if (segments[0] === '') {
@@ -16,6 +17,14 @@ function parseSegments(path) {
   }
 
   return segments;
+}
+
+function Node() {
+  this.name = '';
+  this.static = {};
+  this.param = null;
+  this.callback = null;
+  return this;
 }
 
 function createChildNode(node, segments, callback) {
@@ -32,7 +41,7 @@ function createChildNode(node, segments, callback) {
       }
 
       if (!node.param) {
-        nextNode = node.param = createNode();
+        nextNode = node.param = new Node();
         nextNode.name = segment;
       }
 
@@ -50,7 +59,7 @@ function createChildNode(node, segments, callback) {
 
     // Create a static node.
     if (!node.static[segment]) {
-      nextNode = node.static[segment] = createNode();
+      nextNode = node.static[segment] = new Node();
     } else {
       nextNode = node.static[segment];
     }
@@ -66,6 +75,25 @@ function createChildNode(node, segments, callback) {
   node.callback = callback;
   return node;
 }
+
+Node.prototype.createRoute = function (path, callback) {
+  if (!path || typeof path !== 'string') {
+    throw new Error('createRoute requires a non-empty path string');
+  }
+
+  if (!callback || typeof callback !== 'function') {
+    throw new Error('createRoute expects a function or object as the second argument');
+  }
+
+  var segments = parseSegments(path);
+
+  // There are still empty segments.
+  if (segments.indexOf('') !== -1) {
+    throw new Error('Supplied path contains double slashes');
+  }
+
+  return createChildNode(this, segments, callback);
+};
 
 function findNode(node, segments, params) {
   if (segments.length) {
@@ -88,56 +116,26 @@ function findNode(node, segments, params) {
   if (node.callback) {
     return {
       callback: node.callback,
-      params: params,
+      params: params
     };
   }
 
   return null;
 }
 
-// TODO: switch to prototype methods.
-function createNode() {
-  var _this = {
-    name: '',
-    static: {},
-    param: null,
-    callback: null
-  };
+Node.prototype.matchRoute = function (path) {
+  if (!path || typeof path !== 'string') {
+    throw new Error('matchRoute expects a non-empty path string');
+  }
 
-  _this.createRoute = function (path, callback) {
-    if (!path || typeof path !== 'string') {
-      throw new Error('createRoute requires a non-empty path string');
-    }
-
-    if (!callback || typeof callback !== 'function') {
-      throw new Error('createRoute expects a function or object as the second argument');
-    }
-
-    var segments = parseSegments(path);
-
-    // There are still empty segments.
-    if (segments.indexOf('') !== -1) {
-      throw new Error('Supplied path contains double slashes');
-    }
-
-    return createChildNode(_this, segments, callback);
-  };
-
-  _this.matchRoute = function (path) {
-    if (!path || typeof path !== 'string') {
-      throw new Error('matchRoute expects a non-empty path string');
-    }
-
-    return findNode(_this, parseSegments(path), {});
-  };
-
-  return _this;
-}
-
-// TODO: Implement this.
-function stringify() {}
+  return findNode(this, parseSegments(path), {});
+};
 
 module.exports = {
-  createNode: createNode,
-  stringify: stringify
+  createNode: function () {
+    return new Node();
+  },
+
+  // TODO: Implement this.
+  stringify: function () {}
 };

@@ -182,21 +182,97 @@ describe('mux', function () {
   });
 });
 
+var createRouter = require('./');
+
 // jsdom is used to mock history.
-var jsdom = require('jsdom').jsdom;
-var redux = require('redux').default;
+var redux = require('redux');
+var jsdom = require('jsdom');
+
+// Our window mock;
+function createDOM() {
+  return jsdom.jsdom('', {
+    url: 'http://x.com/'
+  }).defaultView;
+}
 
 describe('createRouter()', function () {
-  it('should return a router');
-  it('should optionally register a click listener');
-  it('that call dispatch in response to click events');
-  it('should listen to popstate events');
-  it('should call dispatch when a popstate event fires');
-});
+  it('should return a router', function () {
+    var window = createDOM();
+    var router = createRouter(window);
+    expect(router.createRoute).toBeA('function');
+    expect(router.createRoute.length).toBe(2);
+    expect(router.init).toBeA('function');
+    expect(router.init.length).toBe(1);
+    window.close();
+  });
 
-describe('router', function () {
-  describe('navigate()', function () {
-    it('should allow for programmatic navigation [pushState, replaceState]');
-    it('should call dispatch when navigate is called');
+  describe('router', function () {
+    describe('createRoute()', function () {
+      it('should create a route in the trie', function () {
+        var window = createDOM();
+        var router = createRouter(window);
+        function cb() {
+          return { type: 'POPSTATE', name: 'root' };
+        }
+
+        var root = router.createRoute('/', cb);
+        expect(root.callback).toBe(cb);
+        expect(root.callback().type).toBe('POPSTATE');
+        expect(root.callback().name).toBe('root');
+        window.close();
+      });
+    });
+
+    describe('init()', function() {
+      it('should return a `navigate` function', function () {
+        var window = createDOM();
+
+        // Create a router.
+        var router = createRouter(window);
+
+        // Create some paths in the router.
+        router.createRoute('/success', function () {
+          return { type: 'ROUTE_CHANGE', name: 'SUCCESS_VIEW' };
+        });
+
+        // Create a not found handler.
+        router.notFound(function () {
+          return { type: 'ROUTE_CHANGE', name: 'NOT_FOUND_VIEW' };
+        });
+
+        // Create a redux store.
+        var store = redux.createStore(function(state, action) {
+          if (action.type === 'ROUTE_CHANGE') {
+            return action.name;
+          }
+          return state;
+        }, '');
+
+        // Initialize the the router, grab a reference to navigate.
+        var navigate = router.init(store.dispatch);
+
+        // Assert the stating route.
+        expect(window.location.pathname).toEqual('/');
+
+        // Navigate to `/success`.
+        navigate('/success');
+
+        // Assert window location and state have changed.
+        expect(window.location.pathname).toEqual('/success');
+        expect(store.getState()).toEqual('SUCCESS_VIEW');
+
+        // Navigate to `/someroutethatdoesntexist`.
+        navigate('/someroutethatdoesntexist');
+
+        // Assert window location and state have changed.
+        expect(window.location.pathname).toEqual('/someroutethatdoesntexist');
+        expect(store.getState()).toEqual('NOT_FOUND_VIEW');
+
+        // Simulate a click on the browsers `back` button.
+        // Assert window location and state have changed.
+        // expect(window.location.pathname).toEqual('/success');
+        // expect(store.getState()).toEqual('SUCCESS_VIEW');
+      });
+    });
   });
 });

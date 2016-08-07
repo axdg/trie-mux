@@ -1,13 +1,19 @@
 {
-  "extends": "airbnb-base/legacy",
-  "globals": {
-      "describe": false,
-      "it": false
-  },
-  rules: {
-    "vars-on-top": 1,
-    "no-param-reassign": 0,
-    "no-underscore-dangle": 0,
-    "func-names": 0
-  }
+    "extends": "airbnb-base",
+    "parser": "babel-eslint",
+    "env": {
+        "browser": true,
+        "node": true,
+        "mocha": true
+    },
+    "ecmaFeatures": {
+        "forOf": true,
+        "es6": true
+    },
+    "rules": {
+        "semi": [ "error", "never" ],
+        "no-param-reassign": "off",
+        "no-unused-expressions": "off",
+        "no-underscore-dangle": "off"
+    }
 }

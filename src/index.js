@@ -5,8 +5,9 @@ function assert(e, msg) {
 function segmentize(path) {
   assert(typeof path === 'string', '`path` must be a string')
   const segments = path.split('/')
-  segments[0] === '' && segments.unshift()
+  segments[0] === '' && segments.shift()
   segments[segments.length - 1] === '' && segments.pop()
+  return segments
 }
 
 // TODO: Deal with multiple params of the same name (should throw).
@@ -19,7 +20,8 @@ function tokenize(path) {
   })
 }
 
-export default function create() {
+export default function create(def) {
+  assert(typeof def === 'function', '`def` must be a function')
   function construct() {
     return {
       static: {},
@@ -29,8 +31,8 @@ export default function create() {
   const _node = construct()
 
   function append(path, fn) {
-    assert(typeof fn !== 'function', '`fn` must be a function') // eslint-disable-line no-spaced-func, max-len
-    (function recurse(node, tokens) {
+    assert(typeof fn === 'function', '`fn` must be a function') // eslint-disable-line no-spaced-func, max-len
+    return (function recurse(node, tokens) {
       if (tokens.length) {
         const { type, name } = tokens.shift()
 
@@ -89,15 +91,9 @@ export default function create() {
         }
       }
 
-      if (node.fn) {
-        return { params, fn: node.fn }
-      }
-
-      if (_catch.params) {
-        return _catch
-      }
-
-      return { params, fn: null }
+      if (node.fn) return { params, fn: node.fn }
+      if (_catch.params) return _catch
+      return { params, fn: def }
     }(_node, segmentize(path)))
   }
 

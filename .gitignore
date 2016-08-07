@@ -1,8 +1,5 @@
 /node_modules/
 .DS_Store
-/build/
+/lib/
 /npm-debug.log
-/coverage/
-/results/
-/build.*.tar.bz2
-/.env
+

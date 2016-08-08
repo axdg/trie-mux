@@ -83,7 +83,7 @@ export default function create(def) {
       if (segments.length) {
         // Udate the catch cache.
         if (node.catch) {
-          _catch.params = { ...params, [node.catch.name]: segments.join() }
+          _catch.params = { ...params, [node.catch.name]: segments.join('/') }
           _catch.fn = node.catch.fn
         }
 

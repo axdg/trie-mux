@@ -86,6 +86,49 @@ describe('create()', () => {
         expect(params).toEqual({ b: 'b' })
         expect(fn()).toBe('notfound')
       }
+
+      {
+        const { params, fn } = match('x/y/z')
+        expect(params).toEqual({ f: 'x' })
+        expect(fn()).toBe('notfound')
+      }
+    })
+
+    it('should match catchall or splat segments', () => {
+      const { append, match } = create(notfound)
+      append('a', handler('a'))
+      append('a/:b*', handler('b'))
+      append('a/b/c', handler('c'))
+
+      {
+        const { params, fn } = match('a/x')
+        expect(params).toEqual({ b: 'x' })
+        expect(fn()).toBe('b')
+      }
+
+      {
+        const { params, fn } = match('a/b/c')
+        expect(params).toEqual({})
+        expect(fn()).toBe('c')
+      }
+
+      {
+        const { params, fn } = match('a/b/c/d')
+        expect(params).toEqual({ b: 'b/c/d' })
+        expect(fn()).toBe('b')
+      }
+
+      {
+        const { params, fn } = match('x')
+        expect(params).toEqual({})
+        expect(fn()).toBe('notfound')
+      }
+
+      {
+        const { params, fn } = match('x/y/z')
+        expect(params).toEqual({})
+        expect(fn()).toBe('notfound')
+      }
     })
   })
 })

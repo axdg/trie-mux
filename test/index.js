@@ -17,8 +17,10 @@ describe('create()', () => {
 
   describe('append and match', () => {
     const handler = str => () => str
+    const noop = handler()
+    const notfound = handler('notfound')
     it('should append and match an empty path handler', () => {
-      const { append, match } = create(handler(''))
+      const { append, match } = create(noop)
       append('', handler('empty'))
       const { params, fn } = match('')
       expect(params).toEqual({})
@@ -26,11 +28,64 @@ describe('create()', () => {
     })
 
     it('should ignore prefixed and trailing slashes', () => {
-      const { append, match } = create(handler('notfound'))
+      const { append, match } = create(handler(notfound))
       append('/some/route/', handler('someroute'))
       append('/', handler('empty'))
       expect(match('some/route').fn()).toBe('someroute')
       expect(match('').fn()).toBe('empty')
+    })
+
+    it('should match static segments', () => {
+      const { append, match } = create(notfound)
+      append('a', handler('a'))
+      append('a/b', handler('b'))
+      append('c', handler('c'))
+      append('c/d/e', handler('e'))
+      expect(match('a').fn()).toBe('a')
+      expect(match('a/b').fn()).toBe('b')
+      expect(match('c').fn()).toBe('c')
+      expect(match('c/d/e').fn()).toBe('e')
+      expect(match('f').fn()).toBe('notfound')
+    })
+
+    it('should match param segments', () => {
+      const { append, match } = create(notfound)
+      append('a', handler('a'))
+      append('a/:b', handler('b'))
+      append('a/:b/c', handler('c'))
+      append('a/d/:e', handler('e'))
+      append(':f', handler('f'))
+
+      {
+        const { params, fn } = match('a/x')
+        expect(params).toEqual({ b: 'x' })
+        expect(fn()).toBe('b')
+      }
+
+      {
+        const { params, fn } = match('a/y/c')
+        expect(params).toEqual({ b: 'y' })
+        expect(fn()).toBe('c')
+      }
+
+      {
+        const { params, fn } = match('a/d/z')
+        expect(params).toEqual({ e: 'z' })
+        expect(fn()).toBe('e')
+      }
+
+      {
+        const { params, fn } = match('q')
+        expect(params).toEqual({ f: 'q' })
+        expect(fn()).toBe('f')
+      }
+
+      // Should bail early and return no match.
+      {
+        const { params, fn } = match('a/b/c/d')
+        expect(params).toEqual({ b: 'b' })
+        expect(fn()).toBe('notfound')
+      }
     })
   })
 })

@@ -38,6 +38,7 @@ export default function create(def) {
 
         // Static node.
         if (type === 'static') {
+          // Create it if necessary.
           if (!node.static[name]) node.static[name] = construct()
           recurse(node.static[name], tokens)
           return
@@ -45,20 +46,27 @@ export default function create(def) {
 
         // Param node.
         if (type === 'param') {
+          // Create if necessary.
           if (!node.param) {
             node.param = construct()
             node.param.name = name
+            recurse(node.param, tokens)
+            return
           }
 
-          assert(node.param.name === name, `attempt to overwrite ${node.param.name} with ${name}`)
+          // Make sure that the node doesn't exist
+          const param = node.param
+          assert(param.name === name, `attempt to overwrite ${param && param.name} with ${name}`)
           recurse(node.param, tokens)
           return
         }
 
         // Catchall node.
+        const _catch = node.catch
         assert(!tokens.length, 'splat params may only occur at the end of a path')
-        assert(!node.catch, `attempt to overwrite ${node.catchall.name} with ${name}`)
+        assert(!_catch, `attempt to overwrite ${_catch && _catch.name} with ${name}`)
         node.catch = construct()
+        node.catch.name = name
         recurse(node.catch, tokens)
         return
       }
@@ -73,7 +81,7 @@ export default function create(def) {
     const _catch = {}
     return (function recurse(node, segments) {
       if (segments.length) {
-        // Udate the _
+        // Udate the catch cache.
         if (node.catch) {
           _catch.params = { ...params, [node.catch.name]: segments.join() }
           _catch.fn = node.catch.fn
@@ -89,6 +97,9 @@ export default function create(def) {
           params[node.param.name] = segment
           return recurse(node.param, segments)
         }
+
+        if (_catch.params) return _catch
+        return { params, fn: def }
       }
 
       if (node.fn) return { params, fn: node.fn }

@@ -130,5 +130,11 @@ describe('create()', () => {
         expect(fn()).toBe('notfound')
       }
     })
+
+    it('should correctly match all three')
+    it('should error if two params have the same name')
+    it('should error when overwriting a handler')
+    it('should error before overwriting a named param')
+    it('should error before appending children to a catchall')
   })
 })

@@ -8,6 +8,17 @@ describe('create()', () => {
     expect(match).toBeA('function')
   })
 
+  it('should error when no default handler is provided', () => {
+    expect(function () {
+      create()
+    }).toThrow('`def` must be a function')
+
+    // Wrong type
+    expect(function () {
+      create('notafunction')
+    }).toThrow('`def` must be a function')
+  })
+
   it('the default handler should be returned when no match is made', () => {
     const { match } = create(() => 'default handler')
     const { fn } = match('')
@@ -132,6 +143,7 @@ describe('create()', () => {
     })
 
     it('should correctly match all three', () => {
+      // TODO: Write this.
     })
 
     it('should error if two params have the same name', () => {

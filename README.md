@@ -2,6 +2,8 @@
 
 > A minimal tree based url path router (or mux)
 
+[![Build Status](https://semaphoreci.com/api/v1/axdg/trie-mux/branches/master/shields_badge.svg)](https://semaphoreci.com/axdg/trie-mux)
+
 ### Installation
 
 Install the package with [npm](https://www.npmjs.com/) and add it to your dependencies:

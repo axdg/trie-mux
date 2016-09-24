@@ -1,8 +1,21 @@
+/**
+ * An assertion utility, there's a lot of type
+ * checking happening here.
+ *
+ * @param {Boolean} some predicate
+ * @param {String} msg, an error message
+ */
 function assert(e, msg) {
   if (!e) throw new Error(msg)
 }
 
-// TODO: Decoding of the URL path (path-to-regexp does a good job).
+/**
+ * Splits the `pathname` fragment of a url into it's
+ * constituent segments, ignoring flanking slashes.
+ *
+ * @param {String} path
+ * @returns {Array} an array of segments
+ */
 function segmentize(path) {
   assert(typeof path === 'string', '`path` must be a string')
   const segments = path.split('/')
@@ -11,6 +24,14 @@ function segmentize(path) {
   return segments
 }
 
+/**
+ * Transforms a path into an array of tokens to be
+ * digested during construction of child nodes in
+ * the trie.
+ *
+ * @param {String} path
+ * @param {Array} tokens [{ type, name }]
+ */
 function tokenize(path) {
   const names = []
   return segmentize(path).map(segment => {
@@ -30,6 +51,12 @@ function tokenize(path) {
   })
 }
 
+/**
+ * Create a trie, a default handler is required.
+ *
+ * @param {Function} default handler
+ * @returns {Object} contains { appned, match }
+ */
 export default function create(def) {
   assert(typeof def === 'function', '`def` must be a function')
   function construct() {
@@ -38,8 +65,15 @@ export default function create(def) {
     }
   }
 
+  // The root node.
   const _node = construct()
 
+  /**
+   * Appends a route to the trie.
+   *
+   * @param {String} the path of this route
+   * @param {Function} the handler for that route
+   */
   function append(path, fn) {
     assert(typeof fn === 'function', '`fn` must be a function') // eslint-disable-line no-spaced-func, max-len
     return (function recurse(node, tokens) {
@@ -83,6 +117,15 @@ export default function create(def) {
     }(_node, tokenize(path)))
   }
 
+  /**
+   * Matches a route in the trie. Contructs an object
+   * of name / value pairs for any param segments in
+   * the match and returns them and the associated
+   * handler (or the default handler on no match)
+   *
+   * @param {String} the path to this route
+   * @returns {Object} contains { params, fn }
+   */
   function match(path) {
     const params = {}
     const _catch = {}

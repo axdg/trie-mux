@@ -131,10 +131,37 @@ describe('create()', () => {
       }
     })
 
-    it('should correctly match all three')
-    it('should error if two params have the same name')
-    it('should error when overwriting a handler')
-    it('should error before overwriting a named param')
-    it('should error before appending children to a catchall')
+    it('should correctly match all three', () => {
+    })
+
+    it('should error if two params have the same name', () => {
+      const { append } = create(notfound)
+      expect(function () {
+        append('a/:b/c/:b', noop)
+      }).toThrow('duplicate param name `b`')
+    })
+
+    it('should error before overwriting a handler', () => {
+      const { append } = create(notfound)
+      append('a/:b/c', handler('one'))
+      expect(function () {
+        append('a/:b/c', handler('two'))
+      }).toThrow('existing handler function')
+    })
+
+    it('should error before overwriting a named param', () => {
+      const { append } = create(notfound)
+      append('/a/:b/c', handler('b'))
+      expect(function () {
+        append('/a/:d/c', handler('d'))
+      }).toThrow('b with d')
+    })
+
+    it('should error before appending children to a catchall', () => {
+      const { append } = create(notfound)
+      expect(function () {
+        append('a/:b*/c', handler('c'))
+      }).toThrow('end of a path')
+    })
   })
 })

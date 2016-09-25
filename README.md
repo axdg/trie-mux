@@ -4,6 +4,10 @@
 
 [![Build Status](https://semaphoreci.com/api/v1/axdg/trie-mux/branches/master/shields_badge.svg)](https://semaphoreci.com/axdg/trie-mux) [![Circle CI](https://circleci.com/gh/axdg/trie-mux/tree/master.svg?style=shield)](https://circleci.com/gh/axdg/trie-mux/tree/master)
 
+trie-mux is a fast and minimal implementation of a [trie](https://en.wikipedia.org/wiki/Trie?oldformat=true) based router. Routers like this are faster than regular expression based routers, and scale better with the number of routes, but that's not really the point.
+
+The real value of a trie based router is that each path supplied to it will match exactly zero or one route(s), and that the order in which routes were declared is of no significance - which makes routing much easier to reason about.
+
 ### Installation
 
 Install the package with [npm](https://www.npmjs.com/) and add it to your dependencies:
